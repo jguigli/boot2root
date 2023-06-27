@@ -23,3 +23,15 @@ Routes possible : /forum
 4. Dans le post "probleme login ?" de lmezard, on peut voir une longue list de log appartenant au serveur.
 On peut apercevoir une ligne ou il y un refus de password pour l'identifiant "!q\]Ej?*5K5cy*AJ". Ce qui ressemble beaucoup a un mdp.
 On essaye de se log au site avec l'identifiant "lmezard" et le mdp "!q\]Ej?*5K5cy*AJ".
+
+5. Passage de dirb 192.168.56.107
+
+On obtient tous les URL possible sur les fichiers serveurs
+
+5. On ouvre un url webmail qui nous permet de nous identifier.
+On essaye laurie@borntosec.net avec le mdp "!q\]Ej?*5K5cy*AJ" bingo on arrive a se log.
+
+6. Dans la boite mail, un mail nous intrigue, mail provenant de qudevide@mail.borntosec.net
+Il nous dit qu'on peut pas se connecter a la DB. Et nous dit d'utiliser root/Fg-'kKXBj87E:aJ$ (pour probablement se connecter la DB)
+
+7. On accede a l'url de phpmydadmin, pour venir tenter d'utiliser la paire d'iendtifiant qu'on vient de decouvrir. Bingo ca marche, on est dans la db.
