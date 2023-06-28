@@ -35,3 +35,9 @@ On essaye laurie@borntosec.net avec le mdp "!q\]Ej?*5K5cy*AJ" bingo on arrive a 
 Il nous dit qu'on peut pas se connecter a la DB. Et nous dit d'utiliser root/Fg-'kKXBj87E:aJ$ (pour probablement se connecter la DB)
 
 7. On accede a l'url de phpmydadmin, pour venir tenter d'utiliser la paire d'iendtifiant qu'on vient de decouvrir. Bingo ca marche, on est dans la db.
+
+8. Dans la db, table forum_db, on a mlf2_userdata, ou on peut retrouver les mots de passes hachees.
+On sait que le mdp hachee de lmezard correspond a "!q\]Ej?*5K5cy*AJ", donc on peut tenter de remplacer le mdp hachee de admin par celui de lmezard.
+On se log in avec admin et "!q\]Ej?*5K5cy*AJ" sur le forum et bingo on est connecte.
+
+9.
