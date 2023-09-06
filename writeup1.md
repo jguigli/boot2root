@@ -166,7 +166,7 @@ On en deduit que le nombre doit etre 9 (car la suite demarre a F(1) donc `F(10) 
 ## Phase 5 : 
 La fonction phase 5 verifie que la string envoye est de longueur egale a 6 sinon ca explose. Une boucle rempli un tableau de char selon une logique.
 Une fonction interne verifie si l'element est different de la string "giants" alors ca explose. Donc il faut que param_1 apres traitement soit egale a "giants".
-Pour cela il nous faut comprendre l'algorithme. Dans une boucle de 5-6 tours, le programme attribut a chaque index d'un tableau d'int une valeur. Cette valeur est `string[param1[i] & 0xf]`. L'operation `& 0xf` effectue sur param1[i] permet de garder seulement les bits de poids faible. Le code ne nous permet pas d'avoir acces aux valeurs de strings qui nous permettera mieux de comprendre les valeurs attendus.
+Pour cela il nous faut comprendre l'algorithme. Dans une boucle de 5-6 tours, le programme attribut a chaque index d'un tableau d'int une valeur. Cette valeur est `string[param1[i] & 0xf]`. L'operation `& 0xf` effectue sur `param1[i]` permet de garder seulement les bits de poids faible. Le code ne nous permet pas d'avoir acces aux valeurs de strings qui nous permettera mieux de comprendre les valeurs attendus.
 
 On rentre dans gdb sur le binaire bomb
 On met un breakpoint sur la ligne assembleur qui recense la variable string pour pouvoir acceder a sa valeur durant l'execution puisqu'elle n'est pas presente dans le code. 
@@ -245,13 +245,15 @@ Pour mieux comprendre le fonctionnement de "exploit_me", nous avons utilisé Ghi
 
 ### Buffer overflow
 
+`Le dépassement de tampon (buffer overflow) se produit lorsqu'un programme écrit dans un tampon de mémoire (une zone de stockage temporaire) qui dépasse la taille prévue du tampon, écrasant ainsi la mémoire adjacente. Cela peut entraîner des comportements indésirables, notamment des plantages de programmes, des erreurs de sécurité et, potentiellement, des exécutions de code non autorisées.`
+
 La limite de 140 caractères du tampon nous a conduit à envisager l'exploitation d'un débordement de tampon, qui pourrait nous permettre d'obtenir un accès au terminal en tant qu'utilisateur "root", étant donné que "exploit_me" est exécuté avec des privilèges "root".
 
 Pour réussir cette attaque, nous avons d'abord désactivé l'ASLR (Address Space Layout Randomization) en vérifiant la valeur de la commande :
 
     cat /proc/sys/kernel/randomize_va_space
 
-Si la réponse est "0", cela signifie que l'ASLR est désactivé.
+Si la réponse est `0`, cela signifie que l'ASLR est désactivé.
 
 Ensuite, nous avons généré une chaîne de caractères de 140 caractères avec la syntaxe Python : 
 
@@ -259,17 +261,9 @@ Ensuite, nous avons généré une chaîne de caractères de 140 caractères avec
 
 Cette chaîne de caractères serait utilisée pour provoquer un débordement de tampon.
 
-Pour identifier l'adresse à laquelle se produirait un "segfault" (violations de segmentation), nous avons utilisé GDB (GNU Debugger). Nous avons exécuté la commande 
+L'objectif principal de cette attaque par débordement de tampon est d'obtenir un accès au terminal en tant qu'utilisateur "root".
 
-    gdb -q --args ./exploit_me python -c 'print("A" * 140)'
-    run
-    c
-
-Le "segfault" a été déclenché à l'adresse "0xb7e45400" (correspondant à "__libc_start_main") avec une chaîne de caractères de 140 caractères.
-
-L'objectif principal de cette attaque par débordement de tampon est d'exécuter du code malveillant ou d'obtenir un accès au terminal en tant qu'utilisateur "root".
-
-Pour atteindre cet objectif, nous avons cherché à exécuter "/bin/sh" en utilisant la commande "system". Pour ce faire, nous avons construit une structure de paramètres : [buffer de débordement] [adresse de "system()"] [adresse de retour] [adresse de "/bin/sh"].
+Pour atteindre cet objectif, nous avons cherché à exécuter "/bin/sh" en utilisant la commande "system" qui permet de faire des appels systemes. Pour ce faire, nous avons construit une structure de paramètres : [buffer de débordement] [adresse de "system()"] [adresse de retour] [adresse de "/bin/sh"].
 
 Pour obtenir l'adresse de "system", nous avons utilisé GDB en plaçant un point d'arrêt sur "main", en lançant le programme et en affichant la valeur de "system".
 
@@ -285,12 +279,11 @@ On recupere l'adresse de system :
 Nous avons également trouvé l'adresse de "/bin/sh" en utilisant la commande "find" :
 
     find __libc_start_main,+99999999,"/bin/sh"
+    0xb7f8cc58
 
 ou en inspectant les plages d'adresses avec "info proc map" dans GDB :
 
     (gdb) info proc map
-
-Cela nous affiche une liste de plage d'adresse :
 
     Mapped address spaces:
 
@@ -315,8 +308,9 @@ On cible un interval d'adresse au niveau de la libc pour chercher /bin/sh */
     ==> 0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
 
     (gdb) find 0xb7fcf000, 0x1a3000,"/bin/sh"
+    0xb7f8cc58
 
-Il faut transformer ces adresses en écriture de shellcode pour respecter la structure des paramètres.
+Il faut transformer ces adresses en écriture de shellcode
 
 Adresse de "system" :
 
@@ -332,7 +326,7 @@ Voici le shellcode à intégrer en argument après le buffer overflow :
 
 "System" permet de faire appel à des fonctions système. Il attend en arguments dans la pile l'adresse de retour de la fonction ainsi que l'adresse de la fonction elle-même.
 
-D'où le shellcode respectant l'ordre [system] + [adresse de retour] + [adresse /bin/sh]. Dans notre cas, il n'est pas important de donner l'adresse de retour de la fonction ; tout ce qui nous importe est d'ouvrir un shell.
+D'où le shellcode respectant l'ordre [system] + [adresse de retour] + [adresse /bin/sh]. Dans notre cas, il n'est pas important de donner l'adresse de retour de la fonction, cela entrainera seulement un segmentation fault au depart de notre shell "root".
 
 ### Élévation des privilèges
 
@@ -348,7 +342,7 @@ Cette commande a ouvert un shell en tant qu'utilisateur "root". En utilisant la 
     uid=1005(zaz) gid=1005(zaz) euid=0(root) groups=0(root),1005(zaz)
 
 Par contre, nous avons seulement l'Effective User ID a 0.
-L'EUID représente l'identifiant de l'utilisateur dont les privilèges sont actuellement utilisés par le processus. Mais pour etre litteralement root sur le systeme avec l'UID a 0, il faut qu'on ajoute l'utilisateur zaz au fichier :
+L'EUID représente l'id de l'utilisateur dont les privilèges sont actuellement utilisés par le processus. Mais pour etre totalement root sur le systeme avec l'UID a 0, il faut qu'on ajoute l'utilisateur zaz au fichier :
 
     /etc/sudoers
 
