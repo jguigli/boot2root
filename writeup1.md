@@ -4,7 +4,7 @@
 Dans ce projet, l'objectif est d'acquérir les privilèges root sur une VM. Afin de valider la partie obligatoire du projet, il faut obtenir les privilèges root sur le serveur en utilisant deux méthodes différentes.
 Chaque méthode employée doit être accompagnée d'un compte rendu complet expliquant les différentes étapes pour devenir root sur le serveur.
 
-
+## Rendu numero 1
 
 
 # Reconnaissance de la cible
@@ -55,7 +55,11 @@ En explorant la boîte de réception du webmail, nous avons trouvé un e-mail qu
 # PhpMyAdmin
 
 ## Accès à phpMyAdmin : 
-Nous avons accédé à l'interface web de phpMyAdmin pour essayer d'utiliser les informations d'identification que nous venions de découvrir. À notre grande satisfaction, cela a fonctionné, et nous avons obtenu un accès à la base de données (DB).
+Nous avons accédé à l'interface web de phpMyAdmin pour essayer d'utiliser les informations d'identification que nous venions de découvrir. 
+
+    https://192.168.56.108/phpmyadmin/
+
+À notre grande satisfaction, cela a fonctionné, et nous avons obtenu un accès à la base de données (DB).
 
 ## Création d'un Fichier PHP Backdoor : 
 Depuis l'interface de phpMyAdmin, nous avons obtenu les autorisations nécessaires pour créer un nouveau fichier PHP. Cela nous a permis de mettre en place une injection de backdoor PHP. Dans la console MySQL de phpMyAdmin, nous avons exécuté la commande SQL suivante :
@@ -87,7 +91,12 @@ Mot de passe : `G!@M6f4Eatau{sF"`
 
 ## Accès FTP au Serveur : 
 
-À partir d'un terminal, nous avons utilisé un client FTP pour établir une connexion avec le serveur. Nous avons utilisé la commande "open" pour spécifier l'adresse IP du serveur. Ensuite, nous avons fourni les informations d'identification de l'utilisateur `lmezard` et le mot de passe `G!@M6f4Eatau{sF`. Une fois connectés, nous avons pu exécuter la commande `ls` pour lister les fichiers présents sur le serveur et avons remarqué la présence de fichiers :
+À partir d'un terminal, nous avons utilisé FTP pour établir une connexion avec le serveur.
+
+    ftp lmezard@192.168.56.107
+
+Ensuite, nous avons fourni les informations d'identification de l'utilisateur `lmezard` et le mot de passe `G!@M6f4Eatau{sF"`. 
+Une fois connectés, nous avons pu exécuter la commande `ls` pour lister les fichiers présents sur le serveur et avons remarqué la présence de fichiers :
 
     README    fun
 
