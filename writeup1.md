@@ -1,10 +1,10 @@
 
 # Boot2root
+## Rendu numero 1
 
 Dans ce projet, l'objectif est d'acquérir les privilèges root sur une VM. Afin de valider la partie obligatoire du projet, il faut obtenir les privilèges root sur le serveur en utilisant deux méthodes différentes.
 Chaque méthode employée doit être accompagnée d'un compte rendu complet expliquant les différentes étapes pour devenir root sur le serveur.
 
-## Rendu numero 1
 
 
 # Reconnaissance de la cible
