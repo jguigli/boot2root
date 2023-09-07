@@ -33,6 +33,9 @@ On colle le contenu du code (https://github.com/firefart/dirtycow/) et on compil
 
 	gcc -pthread dirtycow.c -o dirty -lcrypt
 
+`-phthread` : inclusion de la bibliothèque pthread (POSIX threads)
+`-lcrypt` : inclusion de la bibliothèque crypt (chiffrement du mot de passe)
+
 On lance le programme :
 
 	zaz@BornToSecHackMe:~$ ./dirty 
