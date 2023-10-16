@@ -23,13 +23,18 @@ Le nom "Dirty COW" provient du jeu de mots "copy-on-write" (copie-sur-écriture)
 
 Le programme dirtycow.c genere une nouvelle ligne de mot de passe pour la remplacer dans le fichier /etc/passwd.
 
+Le code commence par sauvegarder le fichier /etc/passwd en le copiant vers /tmp/passwd.bak. Il le fait en utilisant la fonction copy_file pour effectuer la copie.
+Ces informations sont destinées à être utilisées pour créer un nouvel utilisateur dans le fichier /etc/passwd.
+Le mot de passe renseigne est ensuite hache. Ensuite le code génère une ligne au format /etc/passwd en utilisant les informations d'utilisateur et le hachage de mot de passe.
+Le code exploite la vulnérabilité Dirty COW en utilisant une technique de race condition avec les fonctions mmap, fork, ptrace et pthread. Cette exploitation permet d'écrire la ligne /etc/passwd modifiée directement dans la mémoire du processus parent qui exécute le code, contournant ainsi les mécanismes de sécurité du noyau Linux. Une fois que la modification est effectuée dans la mémoire, le processus parent sauvegarde la ligne modifiée dans le fichier /etc/passwd réel.
+
 ### Programme sur la VM
 
-On cree un fichier via `vim` qui accueillera le code permettant d'exploiter la faille dirtycow afin de changer le mot de passe du root
+On recupere le fichier 'dirty cow' :
 
-	vim dirtycow.c
+	scp ./dirtycow.c zaz@192.168.56.108:/home/zaz/
 
-On colle le contenu du code (https://github.com/firefart/dirtycow/) et on compile comme ceci :
+On compile comme ceci :
 
 	gcc -pthread dirtycow.c -o dirty -lcrypt
 

