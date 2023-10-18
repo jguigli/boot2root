@@ -35,23 +35,8 @@ char *getLastLine(char *filename) {
     return line;
 }
 
-void createFinalFile(int fileNb)
+void copyContent(char *file_src, FILE *solution) 
 {
-    FILE *file = fopen(FINALFILE, "a");
-    if (file == NULL) {
-        perror("Error while creating file");
-        return 1;
-    }
-    char buffer[20];
-    for (size_t i = 1; i <= fileNb; ++i)
-    {
-        sprintf(buffer, "%ld", i);
-        copyContent(buffer, file);
-    }
-    fclose(file);
-}
-
-void copyContent(char *file_src, FILE *solution) {
 	FILE *file = fopen(file_src, "r");
     if (!file) {
         perror("Error opening file");
@@ -64,6 +49,22 @@ void copyContent(char *file_src, FILE *solution) {
     }
     fputc('\n', solution);
 
+    fclose(file);
+}
+
+void createFinalFile(int fileNb)
+{
+    FILE *file = fopen(FINALFILE, "a");
+    if (file == NULL) {
+        perror("Error while creating file");
+        return;
+    }
+    char buffer[20];
+    for (size_t i = 1; i <= fileNb; ++i)
+    {
+        sprintf(buffer, "%ld", i);
+        copyContent(buffer, file);
+    }
     fclose(file);
 }
 
@@ -96,7 +97,8 @@ char *recoverFinalFile()
     return buffer;
 }
 
-void checkReturn(char *password, const char *text) {
+void checkReturn(char *password, const char *text) 
+{
     const char *resultat = text;
 
     size_t count = 0;
